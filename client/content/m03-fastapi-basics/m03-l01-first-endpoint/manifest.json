@@ -1,0 +1,34 @@
+{
+  "id": "m03-l01-first-endpoint",
+  "module": { "id": "m03", "title": "FastAPI basics", "order": 3 },
+  "order": 1,
+  "title": "Your first endpoint",
+  "estimateMin": 20,
+  "workdir": "app/m03/l01",
+  "baseUrl": "/api/m03/l01",
+  "starterFiles": ["main.py"],
+  "checks": [
+    {
+      "level": "http",
+      "name": "Returns item_id and q for a valid request",
+      "request": { "method": "GET", "path": "/items/5?q=hello" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "item_id": 5, "q": "hello" },
+        "headerContains": { "content-type": "application/json" }
+      }
+    },
+    {
+      "level": "http",
+      "name": "Rejects a non-integer item_id with 422",
+      "request": { "method": "GET", "path": "/items/abc" },
+      "expect": { "status": 422 }
+    },
+    {
+      "level": "openapi",
+      "name": "item_id is declared as a path parameter typed integer",
+      "pointer": "#/paths/{{lessonPath}}~1items~1{item_id}/get/parameters/0/schema/type",
+      "expect": { "equals": "integer" }
+    }
+  ]
+}

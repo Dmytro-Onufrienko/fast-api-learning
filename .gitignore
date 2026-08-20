@@ -1,0 +1,27 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+.pnpm-store/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.uv/
+
+# Validator scratch workspace and its host-side uv environment
+client/tools/validate/.workspace/
+client/tools/validate/.report/
+client/tools/validate/.uv-venv/
+
+# Env / editor
+.env
+.env.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.log

@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    /* No smooth-scroll: this is a reference tool, motion is a distraction. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 text-ink-200 font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Keyboard focus must always be visible — this app is navigable entirely
+     from the keyboard, and a developer tool that hides focus is broken. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-ink-950 rounded-sm;
+  }
+
+  ::selection {
+    @apply bg-accent-muted/40;
+  }
+
+  /* Scrollbars, tuned down so raw-payload panels don't shout. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.ink.700") transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    @apply bg-ink-700 rounded-full border-2 border-solid border-transparent bg-clip-padding;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* Shiki emits inline styles for tokens; we only control the frame. */
+  .shiki-frame pre {
+    @apply m-0 overflow-x-auto bg-transparent p-3 text-[13px] leading-relaxed;
+  }
+  .shiki-frame code {
+    @apply font-mono;
+  }
+
+  /* Theory prose. Deliberately narrow measure, generous line-height, and
+     no decorative flourish. */
+  .lesson-prose {
+    @apply text-[15px] leading-7 text-ink-300;
+  }
+  .lesson-prose > :where(* + *) {
+    @apply mt-4;
+  }
+  .lesson-prose :where(h2) {
+    @apply mt-9 text-[15px] font-semibold uppercase tracking-wide text-ink-100;
+  }
+  .lesson-prose :where(h3) {
+    @apply mt-7 text-[14px] font-semibold text-ink-100;
+  }
+  .lesson-prose :where(p) {
+    @apply max-w-prose;
+  }
+  .lesson-prose :where(a) {
+    @apply text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent;
+  }
+  .lesson-prose :where(strong) {
+    @apply font-semibold text-ink-100;
+  }
+  .lesson-prose :where(ul) {
+    @apply max-w-prose list-disc space-y-1.5 pl-5 marker:text-ink-600;
+  }
+  .lesson-prose :where(ol) {
+    @apply max-w-prose list-decimal space-y-1.5 pl-5 marker:text-ink-600;
+  }
+  .lesson-prose :where(code) {
+    @apply rounded border border-ink-700/60 bg-ink-850 px-1 py-0.5 font-mono text-[0.85em] text-ink-200;
+  }
+  .lesson-prose :where(pre code) {
+    @apply border-0 bg-transparent p-0;
+  }
+}

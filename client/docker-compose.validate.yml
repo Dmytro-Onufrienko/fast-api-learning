@@ -1,0 +1,29 @@
+# Used only by `pnpm validate` (tools/validate). It runs the same server
+# image as docker-compose.yml, but mounted against the scratch workspace the
+# validator builds from every lesson's solution/ directory instead of the
+# learner's server/. That is the whole point: CI must exercise the
+# reference implementations, so a breaking change in FastAPI or Pydantic
+# fails here rather than in front of a learner.
+#
+# Its own compose project name, deliberately: without it this file shares
+# the directory-derived project name with docker-compose.yml, and the
+# validator's teardown (`down -v --remove-orphans`) then treats a running
+# dev client/server as orphans of that project and deletes them. Validate
+# must be safe to run while `docker compose up` is live.
+name: learn-fastapi-validate
+
+services:
+  server-validate:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    # No --reload: the validator's workspace is written once, up front.
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8100:8000"
+    volumes:
+      - ./tools/validate/.workspace:/workspace
+      - ./content:/content:ro
+    environment:
+      - CONTENT_DIR=/content

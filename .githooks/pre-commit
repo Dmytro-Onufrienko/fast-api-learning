@@ -1,0 +1,44 @@
+#!/bin/sh
+# Refuses a commit unless the current branch carries your own name.
+#
+# The course branches (main, lesson-01, lesson-02, ...) are read-only starting
+# points. Your work belongs on a branch named after you, which the command in
+# the README creates. This hook is what stops "I'll just commit here for now"
+# from quietly happening on a course branch.
+#
+# It is a guardrail, not a lock: `git commit --no-verify` skips it, and it only
+# runs at all once `git config core.hooksPath .githooks` has been set (the
+# README's branch command does that for you).
+
+# symbolic-ref, not `rev-parse --abbrev-ref`: the latter fails on a branch
+# that has no commits yet, which is exactly the state of a freshly cloned
+# lesson branch before the first commit.
+branch=$(git symbolic-ref --short -q HEAD || echo "detached HEAD")
+
+# Same normalisation as the README command, so the two always agree.
+name=$(git config user.name | tr '[:upper:] ' '[:lower:]-')
+
+if [ -z "$name" ]; then
+	echo "pre-commit: git config user.name is empty — set it before committing:"
+	echo "    git config user.name \"Your Name\""
+	exit 1
+fi
+
+case "$branch" in
+*"$name"*)
+	exit 0
+	;;
+esac
+
+lesson=$(echo "$branch" | sed -n 's/^\(lesson-[0-9][0-9]*\).*/\1/p')
+[ -n "$lesson" ] || lesson="lesson-01"
+
+echo "pre-commit: refusing to commit on \"$branch\"."
+echo
+echo "  Course branches are read-only. Work on your own branch instead:"
+echo
+echo "    git checkout -b $lesson-$name $branch"
+echo
+echo "  (\"$name\" comes from your git config user.name.)"
+echo "  Deliberately committing here anyway: git commit --no-verify"
+exit 1

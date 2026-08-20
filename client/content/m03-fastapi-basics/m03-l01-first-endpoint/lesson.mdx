@@ -1,0 +1,136 @@
+FastAPI turns a plain Python function into an HTTP endpoint using a
+decorator, the same way Nest turns a decorated class method into one — but
+the two frameworks get there very differently. Nest wires a controller
+class, a method decorator, and parameter decorators together at startup
+through reflection over TypeScript metadata. FastAPI reads your function's
+**signature** directly: the parameter names, their type annotations, and
+their default values are the entire contract. There is no separate DTO
+class required, no `@Param()` / `@Query()` boilerplate — the type
+annotation itself tells FastAPI where a value comes from and how to
+validate it.
+
+<Diff
+  leftLabel="NestJS"
+  rightLabel="FastAPI"
+  leftLang="typescript"
+  rightLang="python"
+  caption="A route that reads a path parameter"
+  left={`@Controller('items')
+export class ItemsController {
+  @Get(':itemId')
+  findOne(@Param('itemId', ParseIntPipe) itemId: number) {
+    return { itemId };
+  }
+}`}
+  right={`router = APIRouter()
+
+@router.get("/items/{item_id}")
+def read_item(item_id: int):
+    return {"item_id": item_id}
+`}
+/>
+
+Three things happen from that one Python function signature, with zero
+extra code:
+
+1. `item_id: int` becomes a path parameter, because `{item_id}` appears in
+   the route template. FastAPI parses the URL segment and converts it to an
+   `int` before your function ever runs.
+2. If the URL segment can't be converted — `/items/abc` — FastAPI returns a
+   `422 Unprocessable Entity` with a body describing exactly which field
+   failed and why, before your function body executes. In Nest, this is
+   what `ParseIntPipe` does explicitly; in FastAPI it's implied by the
+   annotation.
+3. The route, its parameter, and that parameter's type are recorded into an
+   OpenAPI schema automatically. FastAPI serves it at `/openapi.json` and
+   renders it as interactive docs at `/docs` — no `@nestjs/swagger`
+   decorators, no separate `DocumentBuilder` setup.
+
+<Gotcha title="A type annotation is not a suggestion">
+In FastAPI, the annotation is the validation. `item_id: int` isn't a hint
+for your editor — Pydantic (which FastAPI is built on) uses it at request
+time to coerce and validate the incoming value. Get the annotation wrong —
+say, `item_id: str` when you meant to accept only digits — and FastAPI
+will happily accept `/items/abc`, because a string accepts anything. There
+is no separate validation step to remember to add; the type *is* the
+validation, which also means a sloppy type is a sloppy validator.
+</Gotcha>
+
+## Optional query parameters
+
+A parameter that does **not** appear in the path template — and has a
+default value — becomes an optional query parameter instead. `q: str |
+None = None` reads almost like a TypeScript optional property, and that
+resemblance is intentional: FastAPI leans on the same "the shape of the
+value tells you what's allowed" idea that a `q?: string` field would in a
+Nest DTO.
+
+<Diff
+  leftLabel="NestJS"
+  rightLabel="FastAPI"
+  leftLang="typescript"
+  rightLang="python"
+  caption="Adding an optional query parameter"
+  left={`@Get(':itemId')
+findOne(
+  @Param('itemId', ParseIntPipe) itemId: number,
+  @Query('q') q?: string,
+) {
+  return { itemId, q: q ?? null };
+}`}
+  right={`@router.get("/items/{item_id}")
+def read_item(item_id: int, q: str | None = None):
+    return {"item_id": item_id, "q": q}
+`}
+/>
+
+<Predict
+  lang="python"
+  code={`@router.get("/items/{item_id}")
+def read_item(item_id: int, q: str | None = None):
+    return {"item_id": item_id, "q": q}
+
+# Request: GET /items/5`}
+  choices={[
+    '{"item_id": 5, "q": null}',
+    '{"item_id": "5", "q": null}',
+    '422 Unprocessable Entity',
+    '{"item_id": 5}'
+  ]}
+  answerIndex={0}
+  explanation={"item_id is coerced to the Python int 5 (not the string \"5\"), and q — omitted entirely from the query string — falls back to its default of None, which FastAPI serializes as JSON null. The key is still present in the response because the function always returns it."}
+/>
+
+<Hint hints={[
+  "The router object already exists in the starter file — you're adding one decorated function, not creating a new APIRouter.",
+  "Look at the Diff above: the path template and the parameter's type annotation are doing all the validation work. You don't need to check `item_id`'s type yourself.",
+  "The response body has two keys, item_id and q, in that order — return a dict literal with exactly those two keys."
+]} />
+
+## Your task
+
+Open `server/app/m03/l01/main.py` in your own editor (FastAPI's
+`--reload` picks up the change automatically — no restart needed) and
+implement:
+
+```python
+GET /items/{item_id}
+```
+
+- `item_id` — required, must be an integer. A non-integer value like
+  `/items/abc` should produce a `422`.
+- `q` — optional string query parameter, defaults to `None`.
+- Response body: `{"item_id": ..., "q": ...}`.
+
+<FileTree
+  root="server/"
+  paths={[
+    "app/m03/l01/main.py",
+    "app/m03/l01/__init__.py"
+  ]}
+  highlight={["app/m03/l01/main.py"]}
+/>
+
+When you're done, hit **Run tests** below. Once every check is green, open
+`/docs` in a browser to see the interactive documentation FastAPI generated
+from the exact same function signature you just wrote.

@@ -1,0 +1,9 @@
+# The workspace root is client/ itself (the web app). These are the
+# packages it shares with the CLI validator.
+packages:
+  - "packages/*"
+  - "tools/*"
+
+# Moved here from package.json's "pnpm" field, which pnpm 10 no longer reads.
+onlyBuiltDependencies:
+  - esbuild

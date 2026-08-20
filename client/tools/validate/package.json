@@ -1,0 +1,25 @@
+{
+  "name": "@learn-fastapi/validate",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CLI that runs every lesson's checks against its reference solution. Fails when content rots.",
+  "bin": {
+    "learn-fastapi-validate": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "check-readme": "tsx src/checkReadme.ts"
+  },
+  "dependencies": {
+    "@learn-fastapi/check-engine": "workspace:*",
+    "tinyglobby": "^0.2.9",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

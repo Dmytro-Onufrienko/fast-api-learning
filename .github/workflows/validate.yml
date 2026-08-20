@@ -1,0 +1,53 @@
+name: validate
+
+on:
+  push:
+    # Lesson branches are snapshots of main, so they get the same gate.
+    branches: [main, "lesson-*"]
+  pull_request:
+  schedule:
+    # Weekly, so a breaking change in a transitive dependency surfaces here
+    # rather than in front of a learner.
+    - cron: "0 6 * * 1"
+
+jobs:
+  validate:
+    name: Reference solutions pass every check
+    runs-on: ubuntu-latest
+    # client/ is the pnpm workspace root: it owns content/, the check engine,
+    # the validator and the compose files. server/ is learner code only.
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          # The workspace manifest is client/package.json — there is no
+          # package.json at the repository root any more.
+          package_json_file: client/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (check engine)
+        run: pnpm test
+
+      - name: README lesson list matches content/
+        run: pnpm check-readme
+
+      - name: Build web app
+        run: pnpm build
+
+      - name: Validate content against reference solutions
+        run: pnpm validate --runtime docker

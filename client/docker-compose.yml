@@ -1,0 +1,83 @@
+# Explicit project name: this file lives in client/, so without it compose
+# would derive the project name from that directory and call everything
+# "client-*". docker-compose.validate.yml sets its own name for the same
+# reason — see the comment there.
+name: learn-fastapi
+
+services:
+  # Bind-mounts client/ (the pnpm workspace root) as /repo, because the app
+  # depends on the workspace package packages/check-engine via `workspace:*`
+  # and pnpm resolves that as a symlink relative to the workspace root — so
+  # packages/ has to be visible inside the container too.
+  client:
+    image: node:20-slim
+    working_dir: /repo
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile=false && pnpm dev"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./:/repo
+      # Named volumes keep the container's node_modules out of the host bind
+      # mount: the install happens once, is cached across restarts, and never
+      # fights with a host-side install built for a different platform.
+      - client_node_modules:/repo/node_modules
+      - engine_node_modules:/repo/packages/check-engine/node_modules
+      - validate_node_modules:/repo/tools/validate/node_modules
+    environment:
+      # Vite's dev server needs this to hot-reload correctly through Docker's
+      # bind-mounted filesystem on macOS/Windows.
+      - CHOKIDAR_USEPOLLING=true
+      # pnpm keeps its content-addressable store on the same filesystem as
+      # node_modules. Inside the container $HOME is on the overlay fs while
+      # /repo is a bind mount, so pnpm falls back to /repo/.pnpm-store —
+      # dumping ~130 MB of cache into the host repository on every boot.
+      # Pointing it inside the node_modules volume keeps it off the bind
+      # mount and on the same volume, so hardlinking still works.
+      - npm_config_store_dir=/repo/node_modules/.pnpm-store
+      # Without a TTY pnpm refuses to recreate a node_modules directory it
+      # considers stale (ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY) and the
+      # service dies on boot. CI=true is pnpm's documented switch for
+      # non-interactive environments, which a compose service always is.
+      - CI=true
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../server:/workspace
+      - ./content:/content:ro
+    environment:
+      - CONTENT_DIR=/content
+      # uvicorn's --reload uses watchfiles, whose default OS file-watching
+      # events don't propagate through Docker's bind-mount FS layer on
+      # macOS/Windows — polling is the only reliable option there. It costs
+      # a little CPU on native Linux, which is an acceptable trade-off for a
+      # dev-only container.
+      - WATCHFILES_FORCE_POLLING=true
+
+  # Only needed from the database module onward. Uncomment when a lesson
+  # actually requires Postgres — no point spending resources on it before
+  # then.
+  # postgres:
+  #   image: postgres:16-alpine
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     - POSTGRES_USER=learn_fastapi
+  #     - POSTGRES_PASSWORD=learn_fastapi
+  #     - POSTGRES_DB=learn_fastapi
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  client_node_modules:
+  engine_node_modules:
+  validate_node_modules:
+  # postgres_data:
