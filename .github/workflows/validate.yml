@@ -24,9 +24,12 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
-          # The workspace manifest is client/package.json — there is no
-          # package.json at the repository root any more.
+          # No `version:` here on purpose. The action refuses to run when a
+          # version is given in both places ("Multiple versions of pnpm
+          # specified"), and package.json's packageManager field is the one
+          # that also pins the version locally — so that is the single source
+          # of truth. package_json_file points at it because the repository
+          # root has no package.json any more.
           package_json_file: client/package.json
 
       - uses: actions/setup-node@v4
