@@ -4,8 +4,10 @@ import { CodeBlock } from "../Code";
 export interface PredictProps {
   code: string;
   lang?: string;
-  choices: string[];
-  answerIndex: number;
+  /** Two to four options, in the order they are shown. */
+  options: string[];
+  /** Zero-based index into `options`. */
+  answer: number;
   explanation?: string;
   question?: string;
 }
@@ -18,14 +20,14 @@ export interface PredictProps {
 export function Predict({
   code,
   lang = "python",
-  choices,
-  answerIndex,
+  options,
+  answer,
   explanation,
   question = "What does this evaluate to?",
 }: PredictProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const answered = selected !== null;
-  const correct = selected === answerIndex;
+  const correct = selected === answer;
 
   return (
     <div className="my-6 rounded-md border border-ink-700/70 bg-ink-900/60">
@@ -37,8 +39,8 @@ export function Predict({
         <CodeBlock code={code} lang={lang} />
 
         <ul className="mt-4 list-none space-y-1.5 pl-0" role="radiogroup" aria-label={question}>
-          {choices.map((choice, i) => {
-            const isAnswer = i === answerIndex;
+          {options.map((option, i) => {
+            const isAnswer = i === answer;
             const isSelected = i === selected;
 
             let tone = "border-ink-700 text-ink-300 hover:border-ink-500 hover:text-ink-100";
@@ -59,7 +61,7 @@ export function Predict({
                   <span className="shrink-0 text-2xs text-ink-500">
                     {String.fromCharCode(65 + i)}
                   </span>
-                  <span className="flex-1">{choice}</span>
+                  <span className="flex-1">{option}</span>
                   {answered && isAnswer ? (
                     <span className="shrink-0 text-2xs uppercase tracking-wider text-pass">
                       Correct

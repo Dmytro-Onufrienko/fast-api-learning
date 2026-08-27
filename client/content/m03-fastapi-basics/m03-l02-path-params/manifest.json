@@ -1,0 +1,76 @@
+{
+  "id": "m03-l02-path-params",
+  "module": { "id": "m03", "title": "FastAPI basics", "order": 3 },
+  "order": 2,
+  "title": "Path parameters",
+  "estimateMin": 25,
+  "workdir": "app/m03/l02",
+  "baseUrl": "/api/m03/l02",
+  "starterFiles": ["main.py"],
+  "checks": [
+    {
+      "level": "http",
+      "name": "GET /users/me is matched before the parameterised route",
+      "request": { "method": "GET", "path": "/users/me" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "user_id": "me" }
+      }
+    },
+    {
+      "level": "http",
+      "name": "GET /users/42 returns the id as a number, not a string",
+      "request": { "method": "GET", "path": "/users/42" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "user_id": 42 },
+        "bodyPredicate": "b => typeof b.user_id === 'number'"
+      }
+    },
+    {
+      "level": "http",
+      "name": "GET /users/abc is rejected with 422 before the handler runs",
+      "request": { "method": "GET", "path": "/users/abc" },
+      "expect": {
+        "status": 422,
+        "bodyPredicate": "b => Array.isArray(b.detail) && b.detail[0].loc.includes('path')"
+      }
+    },
+    {
+      "level": "http",
+      "name": "GET /reports/week accepts a valid enum member",
+      "request": { "method": "GET", "path": "/reports/week" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "period": "week" }
+      }
+    },
+    {
+      "level": "http",
+      "name": "GET /reports/year is rejected with 422",
+      "request": { "method": "GET", "path": "/reports/year" },
+      "expect": { "status": 422 }
+    },
+    {
+      "level": "http",
+      "name": "GET /files/{path:path} captures slashes in one piece",
+      "request": { "method": "GET", "path": "/files/docs/2026/report.pdf" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "path": "docs/2026/report.pdf" }
+      }
+    },
+    {
+      "level": "openapi",
+      "name": "user_id is declared as an integer in the schema",
+      "pointer": "#/paths/~1m03~1l02~1users~1{user_id}/get/parameters/0/schema/type",
+      "expect": { "equals": "integer" }
+    },
+    {
+      "level": "openapi",
+      "name": "Period is exposed as an enum with exactly three members",
+      "pointer": "#/components/schemas/Period/enum",
+      "expect": { "equals": ["day", "week", "month"] }
+    }
+  ]
+}

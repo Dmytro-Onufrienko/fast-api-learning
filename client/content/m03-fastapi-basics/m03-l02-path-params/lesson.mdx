@@ -1,0 +1,133 @@
+In Nest, a path parameter arrives as a string and stays a string until you pipe it somewhere. `@Param('userId') userId: string` is honest about that — the `number` type you sometimes write there is a lie the compiler cannot catch, which is why `ParseIntPipe` exists.
+
+FastAPI removes that whole layer. The annotation on the function argument *is* the parser, the validator, and the OpenAPI schema, all at once.
+
+<Diff
+  tsLabel="NestJS"
+  pyLabel="FastAPI"
+  ts={`@Controller('users')
+export class UsersController {
+  @Get(':userId')
+  findOne(
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
+    return { userId };
+  }
+}`}
+  py={`@router.get("/users/{user_id}")
+def find_one(user_id: int):
+    return {"user_id": user_id}`}
+/>
+
+Three things happen because of that single `int`:
+
+1. `/users/42` calls your function with the integer `42`, not the string `"42"`.
+2. `/users/abc` never reaches your function. FastAPI returns `422 Unprocessable Entity` with a structured error body.
+3. `/openapi.json` declares the parameter as an integer, so generated clients get it right too.
+
+## The 422 body
+
+Worth knowing by heart, because you will see it constantly:
+
+```json
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "user_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+
+`detail` is always a list — one entry per failed field. `loc` tells you where it came from: `path`, `query`, `body`, `header`. This is Pydantic's error format, not something FastAPI invents, so it stays identical everywhere in the framework.
+
+<Gotcha title="Declaration order decides the match">
+
+Routes are matched top to bottom, first match wins. A literal route must be declared before the parameterised route that would swallow it:
+
+```python
+@router.get("/users/me")      # must come first
+def me(): ...
+
+@router.get("/users/{user_id}")
+def by_id(user_id: int): ...
+```
+
+Flip these two and `/users/me` gets matched by the second route, `"me"` fails to parse as `int`, and you get a `422` on an endpoint that looks perfectly correct. Nest behaves the same way, but there the failure is quieter — `"me"` is a valid string, so you get a database lookup for a user named "me" instead of an error.
+
+</Gotcha>
+
+## Enums as path parameters
+
+When only a fixed set of values is valid, use an enum. `StrEnum` keeps the value a real string, so it serialises without ceremony.
+
+<Diff
+  tsLabel="NestJS + class-validator"
+  pyLabel="FastAPI"
+  ts={`enum Period { Day = 'day', Week = 'week' }
+
+@Get('reports/:period')
+report(@Param('period') period: string) {
+  if (!Object.values(Period).includes(period as Period)) {
+    throw new BadRequestException();
+  }
+  return { period };
+}`}
+  py={`class Period(StrEnum):
+    DAY = "day"
+    WEEK = "week"
+
+@router.get("/reports/{period}")
+def report(period: Period):
+    return {"period": period}`}
+/>
+
+Anything outside the enum gets a `422` before your code runs, and the allowed values show up in `/docs` as a dropdown.
+
+## Paths that contain slashes
+
+A path parameter stops at the next `/` by default, so `/files/docs/report.pdf` will not match `/files/{file_path}`. The `:path` converter lifts that restriction:
+
+```python
+@router.get("/files/{file_path:path}")
+def read_file(file_path: str):
+    return {"path": file_path}
+```
+
+Now `file_path` receives `docs/report.pdf` in one piece.
+
+<Predict
+  code={`@router.get("/items/{item_id}")
+def read(item_id: int):
+    return {"item_id": item_id}
+
+# GET /items/007`}
+  options={[
+    '{"item_id": "007"}',
+    '{"item_id": 7}',
+    "422, because 007 is not a canonical integer",
+  ]}
+  answer={1}
+  explanation="Pydantic parses the string and hands your function a real int, so the leading zeros are gone by the time you see it. The response contains the number 7. Coercion, not rejection — that only happens when the value cannot be parsed at all."
+/>
+
+## Your task
+
+Open `app/m03/l02/main.py` and build four endpoints.
+
+**1.** `GET /users/me` returns `{"user_id": "me"}`.
+
+**2.** `GET /users/{user_id}` takes an integer and returns `{"user_id": <int>}`. `/users/abc` must produce a `422`, and `/users/me` must keep working.
+
+**3.** `GET /reports/{period}` accepts only `day`, `week`, or `month`, and returns `{"period": "<value>"}`. Define the enum as a class named `Period` — the checks look it up in the OpenAPI schema by that name.
+
+**4.** `GET /files/{file_path:path}` returns `{"path": "<everything after /files/>"}`, including any slashes.
+
+<Hint>Declaration order matters for the two `/users/...` routes. If `/users/me` returns a 422, you have them the wrong way round.</Hint>
+
+<Hint>`StrEnum` lives in the standard library: `from enum import StrEnum`. The member names are up to you, but the *values* must be exactly `day`, `week`, `month`.</Hint>
+
+<Hint>For the file path, the converter goes inside the braces and the annotation stays a plain `str`: `@router.get("/files/{file_path:path}")` with `def read_file(file_path: str)`.</Hint>

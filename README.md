@@ -61,6 +61,24 @@ git fetch origin && git checkout -b lesson-01-$(git config user.name | tr '[:upp
 
 ---
 
+### Lesson 02 — Path parameters
+
+In Nest a path parameter arrives as a string and stays one until you pipe it
+somewhere — `ParseIntPipe` exists because the `number` you sometimes write
+there is a lie the compiler cannot catch. FastAPI deletes that layer: the
+annotation *is* the parser, the validator and the schema entry. Route ordering
+(`/users/me` before `/users/{user_id}`), `StrEnum` for a closed set of values,
+and the `:path` converter for parameters that contain slashes.
+
+Module: FastAPI basics · about 25 minutes ·
+branch: [`lesson-02`](https://github.com/Dmytro-Onufrienko/fast-api-learning/tree/lesson-02)
+
+```bash
+git fetch origin && git checkout -b lesson-02-$(git config user.name | tr '[:upper:] ' '[:lower:]-') origin/lesson-02 && git config core.hooksPath .githooks
+```
+
+---
+
 ## Working through a lesson
 
 ```

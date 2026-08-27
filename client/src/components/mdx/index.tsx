@@ -4,10 +4,10 @@ import { CodeBlock } from "../Code";
 import { Diff } from "./Diff";
 import { Gotcha } from "./Gotcha";
 import { Predict } from "./Predict";
-import { Hint } from "./Hint";
+import { Hint, HintGroup } from "./Hint";
 import { FileTree } from "./FileTree";
 
-export { Diff, Gotcha, Predict, Hint, FileTree };
+export { Diff, Gotcha, Predict, Hint, HintGroup, FileTree };
 
 interface CodeElementProps {
   className?: string;

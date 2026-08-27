@@ -13,7 +13,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit && pnpm -r typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "vitest run && pnpm -r --if-present test",
     "validate": "pnpm --filter @learn-fastapi/validate start",
     "check-readme": "pnpm --filter @learn-fastapi/validate check-readme",
     "lint": "echo \"(no linter configured yet)\" && pnpm -r lint"
@@ -37,6 +37,7 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.3",
-    "vite": "^5.4.9"
+    "vite": "^5.4.9",
+    "vitest": "^2.1.9"
   }
 }

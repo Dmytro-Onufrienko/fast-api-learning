@@ -171,6 +171,20 @@ come from your Pydantic model names and aren't prefixed.
 A failing openapi check reports the *expanded* pointer, so what you see in
 the output is exactly what was looked up.
 
+Two more things worth knowing about the generated document:
+
+- Pointers use the **server-side** path. The `/api` prefix in `baseUrl` is
+  added by the Vite proxy in the browser and never reaches the server, so a
+  lesson mounted at `/api/m03/l02` appears under `/m03/l02` — which is
+  exactly what `{{lessonPath}}` expands to.
+- FastAPI omits unset optional keys from `/openapi.json` rather than
+  serialising them as null. A pointer at something like `deprecated` on a
+  normal operation therefore does not resolve, so assert it with
+  `exists: false`, not `equals: false`.
+- The engine mounts each lesson's router with a prefix and nothing else. It
+  adds no tags of its own, so `tags` in the generated document contains
+  exactly what the lesson declared and can be asserted directly.
+
 ### `pytest` — checks that need to import the module
 
 For anything that requires inspecting the learner's code rather than just
@@ -236,24 +250,53 @@ identically by the web app and `pnpm validate`.
 ## Theory: lesson.mdx and its components
 
 `lesson.mdx` is plain Markdown plus five components, always in scope, no
-import needed:
+import needed. It carries no title heading — the title comes from the
+manifest, so the page renders it exactly once. The components are covered by
+tests in `client/src/components/mdx/mdx.test.tsx`: nothing else in the
+pipeline checks that a lesson passes the prop names they actually expect.
 
 - **`<Diff>`** — the core pedagogical device: NestJS/Express on the left,
-  the FastAPI equivalent on the right. Props: `left`, `right` (code as
-  strings — use a template literal for multi-line), `leftLabel`,
-  `rightLabel`, `leftLang`, `rightLang` (Shiki language ids, e.g.
-  `"typescript"` / `"python"`), `caption` (optional).
+  the FastAPI equivalent on the right. The props are named after the
+  languages, not the columns, so the panes cannot be filled in the wrong
+  order and the highlighting follows automatically.
+
+  ```jsx
+  <Diff
+    tsLabel="NestJS"        // optional, defaults to "TypeScript"
+    pyLabel="FastAPI"       // optional, defaults to "Python"
+    caption="A route that reads a path parameter"   // optional
+    ts={`@Get(':itemId')
+  findOne(@Param('itemId', ParseIntPipe) itemId: number) {}`}
+    py={`@router.get("/items/{item_id}")
+  def read_item(item_id: int): ...`}
+  />
+  ```
+
 - **`<Gotcha title="...">children</Gotcha>`** — callout for a trap (mutable
   default arguments, a type annotation that's too loose to validate
   anything, etc.). Children can be any Markdown/JSX.
-- **`<Predict code={...} lang="python" choices={[...]} answerIndex={n} explanation="...">`**
-  — a snippet plus a multiple-choice "what does this print/return". The
-  explanation only reveals after the learner picks an answer, correct or not.
-- **`<Hint hints={["...", "...", ...]} />`** — progressively revealed
-  hints; each is shown only after the previous one has been read.
-- **`<FileTree root="server/" paths={["app/m03/l02/main.py", ...]} highlight={[...]} />`**
-  — renders the lesson's directory layout. `highlight` (optional) marks
-  which paths the learner should actually edit.
+- **`<Predict code={...} options={[...]} answer={n} explanation="..." />`**
+  — a snippet plus a multiple-choice "what does this print/return".
+  `options` takes two to four strings, `answer` is a zero-based index into
+  them, and `lang` (default `"python"`) sets the highlighting. Nothing about
+  correctness — not the answer, not the explanation, not a visual cue — is
+  revealed until the learner commits to a choice; that commitment is where
+  the pedagogy lives.
+- **`<Hint>one hint</Hint>`** — one hint per element. Write several in a row
+  and they reveal one at a time, so reading the first cannot spoil the
+  third. Children can be Markdown, so inline code works.
+- **`<FileTree>{`...`}</FileTree>`** — the lesson's directory layout, drawn
+  literally:
+
+  ```jsx
+  <FileTree>{`server/
+  └─ app/m03/l02/
+     ├─ __init__.py
+     └─ main.py      ← you edit this`}</FileTree>
+  ```
+
+  Written by hand rather than derived from a path list, so a lesson can show
+  files that do not exist yet — which is usually the point.
 
 Keep `lesson.mdx` prose technical and dense — this is a reference for
 working developers, not a tutorial with filler.

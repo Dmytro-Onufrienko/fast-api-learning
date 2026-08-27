@@ -10,19 +10,17 @@ annotation itself tells FastAPI where a value comes from and how to
 validate it.
 
 <Diff
-  leftLabel="NestJS"
-  rightLabel="FastAPI"
-  leftLang="typescript"
-  rightLang="python"
+  tsLabel="NestJS"
+  pyLabel="FastAPI"
   caption="A route that reads a path parameter"
-  left={`@Controller('items')
+  ts={`@Controller('items')
 export class ItemsController {
   @Get(':itemId')
   findOne(@Param('itemId', ParseIntPipe) itemId: number) {
     return { itemId };
   }
 }`}
-  right={`router = APIRouter()
+  py={`router = APIRouter()
 
 @router.get("/items/{item_id}")
 def read_item(item_id: int):
@@ -66,19 +64,17 @@ value tells you what's allowed" idea that a `q?: string` field would in a
 Nest DTO.
 
 <Diff
-  leftLabel="NestJS"
-  rightLabel="FastAPI"
-  leftLang="typescript"
-  rightLang="python"
+  tsLabel="NestJS"
+  pyLabel="FastAPI"
   caption="Adding an optional query parameter"
-  left={`@Get(':itemId')
+  ts={`@Get(':itemId')
 findOne(
   @Param('itemId', ParseIntPipe) itemId: number,
   @Query('q') q?: string,
 ) {
   return { itemId, q: q ?? null };
 }`}
-  right={`@router.get("/items/{item_id}")
+  py={`@router.get("/items/{item_id}")
 def read_item(item_id: int, q: str | None = None):
     return {"item_id": item_id, "q": q}
 `}
@@ -91,21 +87,21 @@ def read_item(item_id: int, q: str | None = None):
     return {"item_id": item_id, "q": q}
 
 # Request: GET /items/5`}
-  choices={[
+  options={[
     '{"item_id": 5, "q": null}',
     '{"item_id": "5", "q": null}',
     '422 Unprocessable Entity',
     '{"item_id": 5}'
   ]}
-  answerIndex={0}
+  answer={0}
   explanation={"item_id is coerced to the Python int 5 (not the string \"5\"), and q — omitted entirely from the query string — falls back to its default of None, which FastAPI serializes as JSON null. The key is still present in the response because the function always returns it."}
 />
 
-<Hint hints={[
-  "The router object already exists in the starter file — you're adding one decorated function, not creating a new APIRouter.",
-  "Look at the Diff above: the path template and the parameter's type annotation are doing all the validation work. You don't need to check `item_id`'s type yourself.",
-  "The response body has two keys, item_id and q, in that order — return a dict literal with exactly those two keys."
-]} />
+<Hint>The router object already exists in the starter file — you're adding one decorated function, not creating a new `APIRouter`.</Hint>
+
+<Hint>Look at the Diff above: the path template and the parameter's type annotation are doing all the validation work. You don't need to check `item_id`'s type yourself.</Hint>
+
+<Hint>The response body has two keys, `item_id` and `q`, in that order — return a dict literal with exactly those two keys.</Hint>
 
 ## Your task
 
@@ -122,14 +118,12 @@ GET /items/{item_id}
 - `q` — optional string query parameter, defaults to `None`.
 - Response body: `{"item_id": ..., "q": ...}`.
 
-<FileTree
-  root="server/"
-  paths={[
-    "app/m03/l01/main.py",
-    "app/m03/l01/__init__.py"
-  ]}
-  highlight={["app/m03/l01/main.py"]}
-/>
+<FileTree>{`server/
+└─ app/
+   └─ m03/
+      └─ l01/
+         ├─ __init__.py
+         └─ main.py      ← you edit this`}</FileTree>
 
 When you're done, hit **Run tests** below. Once every check is green, open
 `/docs` in a browser to see the interactive documentation FastAPI generated
