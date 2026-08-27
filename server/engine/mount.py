@@ -39,5 +39,11 @@ def mount_all_lessons(app: FastAPI) -> None:
             )
             continue
 
-        app.include_router(router, prefix=lesson.mount_prefix, tags=[lesson.manifest["module"]["id"]])
+        # Mounted with a prefix and nothing else. The engine used to add
+        # tags=[module_id] here, which leaked a platform detail into the
+        # learner's generated schema: a lesson that declares tags=["articles"]
+        # showed up as ["m03", "articles"], so an openapi check on its own
+        # tags could not be written honestly. What the learner declares is
+        # what /openapi.json shows.
+        app.include_router(router, prefix=lesson.mount_prefix)
         logger.info('Mounted lesson "%s" at %s', lesson_id, lesson.mount_prefix)

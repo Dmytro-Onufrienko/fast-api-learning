@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { getLesson, getNeighbours } from "../content/registry";
 import { bootstrapLesson } from "../lib/api";
 import { CheckPanel } from "../components/CheckPanel";
-import { mdxComponents } from "../components/mdx";
+import { HintGroup, mdxComponents } from "../components/mdx";
 import { useProgress, lessonStatus, STATUS_LABEL } from "../store/progress";
 
 export function LessonPage() {
@@ -77,8 +77,12 @@ export function LessonPage() {
       {/* Zone 1 — theory. Components are handed to the MDX component
           explicitly rather than through a provider, because lesson.mdx files
           live under content/ and can't resolve imports from client. */}
+      {/* HintGroup keys off the lesson id so a half-revealed hint chain does
+          not carry over when the learner moves to the next lesson. */}
       <div className="lesson-prose">
-        <Theory components={mdxComponents} />
+        <HintGroup key={manifest.id}>
+          <Theory components={mdxComponents} />
+        </HintGroup>
       </div>
 
       {/* Zone 2 — the task's file location. The learner writes real Python in
