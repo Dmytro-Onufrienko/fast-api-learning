@@ -97,6 +97,24 @@ git fetch origin && git checkout -b lesson-03-$(git config user.name | tr '[:upp
 
 ---
 
+### Lesson 04 — Path operation metadata and the generated schema
+
+In Nest the route and its documentation are two systems: the framework knows
+the path, `@nestjs/swagger` knows what it means, and they drift the moment
+someone edits a handler and forgets the decorator above it. FastAPI has one
+source — the decorator that registers the route documents it. `status_code`,
+`tags`, `summary`, the docstring as description, `operation_id`, and
+`deprecated`, all read back out of `/openapi.json`.
+
+Module: FastAPI basics · about 20 minutes ·
+branch: [`lesson-04`](https://github.com/Dmytro-Onufrienko/fast-api-learning/tree/lesson-04)
+
+```bash
+git fetch origin && git checkout -b lesson-04-$(git config user.name | tr '[:upper:] ' '[:lower:]-') origin/lesson-04 && git config core.hooksPath .githooks
+```
+
+---
+
 ## Working through a lesson
 
 ```

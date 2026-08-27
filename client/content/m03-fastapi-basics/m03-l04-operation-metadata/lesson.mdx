@@ -1,0 +1,96 @@
+In Nest, the API contract and its documentation are two separate systems. The framework knows the route; `@nestjs/swagger` knows what the route *means*, and only because you told it a second time with `@ApiTags`, `@ApiOperation`, and `@ApiResponse`. They drift apart the moment someone changes a handler and forgets the decorator above it.
+
+FastAPI has one source. The decorator that registers the route is the same decorator that documents it.
+
+<Diff
+  tsLabel="NestJS + @nestjs/swagger"
+  pyLabel="FastAPI"
+  ts={`@ApiTags('products')
+@Controller('products')
+export class ProductsController {
+  @Post()
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Create a product' })
+  @ApiResponse({ status: 201, type: ProductDto })
+  create(@Body() dto: CreateProductDto) {
+    return this.service.create(dto);
+  }
+}`}
+  py={`@router.post(
+    "/products",
+    status_code=201,
+    tags=["products"],
+    summary="Create a product",
+)
+def create_product():
+    """Longer description picked up from the docstring."""
+    return {"id": 1}`}
+/>
+
+## The arguments worth knowing
+
+- **`status_code`** — the success status. Defaults to `200`, but a `POST` that creates something should say `201`. Use the `status` module (`status.HTTP_201_CREATED`) if you prefer names over numbers; both are identical to FastAPI, and the numeric form is common in real codebases.
+- **`tags`** — groups operations in `/docs` and, more importantly, decides how client generators name their service classes. A list, because one operation can belong to several groups.
+- **`summary`** — the one-line label. Defaults to a prettified function name, which is rarely what you want in a public API.
+- **description** — taken from the **docstring** automatically. Markdown is rendered. You can override it with an explicit `description=` argument, but letting the docstring do it keeps the explanation next to the code.
+- **`deprecated=True`** — marks the operation struck through in the docs while keeping it fully functional.
+- **`operation_id`** — the stable identifier used by code generators.
+
+<Gotcha title="operation_id is the name your TS client will have">
+
+Tools like `openapi-typescript`, `orval`, and `openapi-generator` derive function names from `operationId`. FastAPI's default is built from the function name, the path, and the method, which produces things like:
+
+```
+read_product_products__product_id__get
+```
+
+Your generated client then exposes `readProductProductsProductIdGet()`. Set it explicitly on anything a client will consume:
+
+```python
+@router.get("/products/{product_id}", operation_id="getProduct")
+```
+
+This is the highest-leverage five seconds in the whole file if a frontend consumes your API — and it is invisible until someone runs the generator.
+
+</Gotcha>
+
+## Why this matters more here than in Nest
+
+Because the schema is derived rather than declared, it is always true. If you change a parameter's type, the docs change in the same commit — there is no second place to update and no way for them to disagree. That is the actual argument for FastAPI over Express-with-Swagger-comments, and it only pays off if you fill in the metadata.
+
+<Predict
+  code={`@router.post("/items", status_code=201)
+def create_item():
+    return {"ok": True}
+
+# What status does a successful POST /items return?`}
+  options={[
+    "200, because the function returns normally",
+    "201",
+    "201 only if the function returns a Response object",
+  ]}
+  answer={1}
+  explanation="status_code sets the status for any successful return. You only need to build a Response yourself when the status varies at runtime — for example returning 200 on an update and 201 on a create from the same handler."
+/>
+
+## Your task
+
+Open `app/m03/l04/main.py` and build three operations on the same resource. The behaviour is trivial; the metadata is the exercise.
+
+**1.** `POST /articles` — returns `{"id": 1, "title": "Hello"}` with status **201**.
+Tag `articles`, summary `Create an article`, operation id `createArticle`.
+
+**2.** `GET /articles/{article_id}` — returns `{"id": <int>, "title": "Hello"}`.
+Tag `articles`, summary `Get an article`, operation id `getArticle`.
+Give it a docstring; it becomes the description in the schema.
+
+**3.** `GET /articles/{article_id}/legacy` — returns `{"id": <int>}`.
+Tag `articles`, marked **deprecated**, operation id `getArticleLegacy`.
+
+Then open `/docs` through the API container and confirm the three operations are grouped under one heading, with the third one struck through.
+
+<Hint>Everything goes into the decorator call as keyword arguments: `@router.post("/articles", status_code=201, tags=["articles"], summary="...", operation_id="...")`.</Hint>
+
+<Hint>`tags` is a list even when there is only one tag.</Hint>
+
+<Hint>The description comes from the function docstring — the triple-quoted string directly under the `def` line. You do not pass it as an argument.</Hint>

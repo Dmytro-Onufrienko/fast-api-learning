@@ -1,0 +1,81 @@
+{
+  "id": "m03-l04-operation-metadata",
+  "module": { "id": "m03", "title": "FastAPI basics", "order": 3 },
+  "order": 4,
+  "title": "Path operation metadata and the generated schema",
+  "estimateMin": 20,
+  "workdir": "app/m03/l04",
+  "baseUrl": "/api/m03/l04",
+  "starterFiles": ["main.py"],
+  "checks": [
+    {
+      "level": "http",
+      "name": "POST /articles responds with 201, not 200",
+      "request": { "method": "POST", "path": "/articles" },
+      "expect": {
+        "status": 201,
+        "bodyMatches": { "id": 1, "title": "Hello" }
+      }
+    },
+    {
+      "level": "http",
+      "name": "GET /articles/{id} echoes the id back as a number",
+      "request": { "method": "GET", "path": "/articles/7" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "id": 7, "title": "Hello" }
+      }
+    },
+    {
+      "level": "http",
+      "name": "The deprecated operation still works",
+      "request": { "method": "GET", "path": "/articles/7/legacy" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "id": 7 }
+      }
+    },
+    {
+      "level": "openapi",
+      "name": "201 is documented as the success response, not 200",
+      "pointer": "#/paths/~1m03~1l04~1articles/post/responses/201",
+      "expect": { "exists": true }
+    },
+    {
+      "level": "openapi",
+      "name": "createArticle has a stable operation id",
+      "pointer": "#/paths/~1m03~1l04~1articles/post/operationId",
+      "expect": { "equals": "createArticle" }
+    },
+    {
+      "level": "openapi",
+      "name": "getArticle has a stable operation id",
+      "pointer": "#/paths/~1m03~1l04~1articles~1{article_id}/get/operationId",
+      "expect": { "equals": "getArticle" }
+    },
+    {
+      "level": "openapi",
+      "name": "All three operations are grouped under the articles tag",
+      "pointer": "#/paths/~1m03~1l04~1articles~1{article_id}/get/tags",
+      "expect": { "equals": ["articles"] }
+    },
+    {
+      "level": "openapi",
+      "name": "The summary is set rather than derived from the function name",
+      "pointer": "#/paths/~1m03~1l04~1articles/post/summary",
+      "expect": { "equals": "Create an article" }
+    },
+    {
+      "level": "openapi",
+      "name": "The docstring became the operation description",
+      "pointer": "#/paths/~1m03~1l04~1articles~1{article_id}/get/description",
+      "expect": { "exists": true }
+    },
+    {
+      "level": "openapi",
+      "name": "The legacy operation is flagged as deprecated",
+      "pointer": "#/paths/~1m03~1l04~1articles~1{article_id}~1legacy/get/deprecated",
+      "expect": { "equals": true }
+    }
+  ]
+}
