@@ -1,0 +1,131 @@
+There is no `@Query()` decorator in FastAPI, and no DTO class either. The rule is positional: **any function argument that is not part of the path becomes a query parameter.** Give it a default and it is optional; leave the default off and it is required.
+
+<Diff
+  tsLabel="NestJS + class-validator"
+  pyLabel="FastAPI"
+  ts={`class ListProductsDto {
+  @IsOptional() @IsString()
+  q?: string;
+
+  @Type(() => Number) @IsInt() @Min(1)
+  page: number = 1;
+}
+
+@Get('products')
+list(@Query() dto: ListProductsDto) {
+  return dto;
+}`}
+  py={`@router.get("/products")
+def list_products(
+    q: str | None = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+):
+    return {"q": q, "page": page}`}
+/>
+
+The Nest version needs a class, two decorator libraries, a `ValidationPipe` registered somewhere, and `@Type()` to undo the fact that query strings are strings. The FastAPI version needs the signature.
+
+## Where the constraints live: `Annotated`
+
+You will find an older style in blog posts and StackOverflow answers:
+
+```python
+page: int = Query(1, ge=1)     # legacy — avoid in new code
+```
+
+It works, but it puts metadata in the slot where the default value belongs, which breaks as soon as you want to reuse the argument or call the function directly in a test. The modern form separates the two concerns:
+
+```python
+page: Annotated[int, Query(ge=1)] = 1
+#      ^type       ^metadata        ^actual default
+```
+
+`Annotated[T, ...]` is standard-library typing: everything after the first position is metadata that type checkers ignore and frameworks read. FastAPI reads the `Query(...)` object out of it. Mentally it is the same trick as a TS decorator attaching metadata to a property, except it is a value, not a side effect — so it can be assigned to a variable and shared:
+
+```python
+PageSize = Annotated[int, Query(ge=1, le=100)]
+
+def list_products(size: PageSize = 20): ...
+def list_orders(size: PageSize = 20): ...
+```
+
+## Validation you get from `Query`
+
+`ge`, `gt`, `le`, `lt` for numbers. `min_length`, `max_length`, `pattern` for strings. Each one lands in the OpenAPI schema, so `/docs` documents the limits without you writing them twice.
+
+## The alias, and why you will need it
+
+Python code is `snake_case`, and your existing TS client almost certainly sends `pageSize`. Rather than renaming one side, alias the parameter:
+
+```python
+page_size: Annotated[int, Query(alias="pageSize")] = 20
+```
+
+The wire format stays `?pageSize=50`; inside the function the value is `page_size`. This is the same problem Pydantic solves with `alias_generator` for request bodies — you will meet it again in the module on models.
+
+## Lists and booleans
+
+A repeated query key collects into a list, but only if you say so explicitly:
+
+```python
+tags: Annotated[list[str] | None, Query()] = None
+```
+
+`?tags=new&tags=sale` gives `["new", "sale"]`. The bare `Query()` is required here — without it FastAPI sees a non-scalar type and tries to read the argument from the request body instead.
+
+Booleans are parsed leniently: `?in_stock=true`, `=1`, `=yes`, `=on` are all `True`; `false`, `0`, `no`, `off` are `False`. Anything else is a `422`.
+
+<Gotcha title="`str | None = None` is not the same as `str | None`">
+
+The type says the value may be `None`. The **default** is what makes it optional.
+
+```python
+q: str | None            # REQUIRED — and 422 if omitted
+q: str | None = None     # optional, defaults to None
+```
+
+Writing the first one and expecting the second is the single most common early mistake, because in TypeScript `q?: string` fuses the two ideas into one character.
+
+</Gotcha>
+
+<Predict
+  code={`@router.get("/search")
+def search(limit: int = 10):
+    return {"limit": limit}
+
+# GET /search?limit=5&limit=8`}
+  options={[
+    '{"limit": 5}',
+    '{"limit": 8}',
+    '{"limit": [5, 8]}',
+    "422, because limit was sent twice",
+  ]}
+  answer={0}
+  explanation="A scalar annotation takes the first occurrence and ignores the rest — no error, no list. You only get a list when the annotation asks for one: Annotated[list[int], Query()]. Worth remembering, because a duplicated key in a hand-built URL then fails silently rather than loudly."
+/>
+
+## Your task
+
+Open `app/m03/l03/main.py` and build a single endpoint: `GET /products`.
+
+It takes five query parameters, all optional:
+
+| Parameter | Wire name | Type | Default | Constraint |
+|---|---|---|---|---|
+| `q` | `q` | `str \| None` | `None` | at least 2 characters |
+| `page` | `page` | `int` | `1` | `>= 1` |
+| `page_size` | `pageSize` | `int` | `20` | between `1` and `100` |
+| `tags` | `tags` | `list[str] \| None` | `None` | repeated key |
+| `in_stock` | `in_stock` | `bool` | `False` | — |
+
+Return every value as JSON under its **Python** name:
+
+```json
+{"q": null, "page": 1, "page_size": 20, "tags": null, "in_stock": false}
+```
+
+<Hint>Import `Annotated` from `typing` and `Query` from `fastapi`. The constraint arguments are keyword arguments on `Query`: `Query(ge=1, le=100, alias="pageSize")`.</Hint>
+
+<Hint>For the string length constraint the keyword is `min_length`, and it belongs on `Query`, not on the type.</Hint>
+
+<Hint>The list parameter needs `Query()` present even with no arguments — that is the signal that it comes from the query string rather than the body.</Hint>
