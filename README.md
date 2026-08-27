@@ -79,6 +79,24 @@ git fetch origin && git checkout -b lesson-02-$(git config user.name | tr '[:upp
 
 ---
 
+### Lesson 03 — Query parameters and Annotated
+
+There is no `@Query()` decorator and no DTO class. The rule is positional:
+any argument that is not part of the path is a query parameter, and a default
+is what makes it optional. Then `Annotated[...]` for the constraints Nest
+spreads across `class-validator` decorators — `min_length`, `ge`/`le`, an
+alias so the wire name (`pageSize`) differs from the Python name
+(`page_size`), and list-valued parameters.
+
+Module: FastAPI basics · about 30 minutes ·
+branch: [`lesson-03`](https://github.com/Dmytro-Onufrienko/fast-api-learning/tree/lesson-03)
+
+```bash
+git fetch origin && git checkout -b lesson-03-$(git config user.name | tr '[:upper:] ' '[:lower:]-') origin/lesson-03 && git config core.hooksPath .githooks
+```
+
+---
+
 ## Working through a lesson
 
 ```

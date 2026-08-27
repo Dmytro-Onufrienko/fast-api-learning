@@ -1,0 +1,95 @@
+{
+  "id": "m03-l03-query-params",
+  "module": { "id": "m03", "title": "FastAPI basics", "order": 3 },
+  "order": 3,
+  "title": "Query parameters and Annotated",
+  "estimateMin": 30,
+  "workdir": "app/m03/l03",
+  "baseUrl": "/api/m03/l03",
+  "starterFiles": ["main.py"],
+  "checks": [
+    {
+      "level": "http",
+      "name": "All five parameters are optional and return their defaults",
+      "request": { "method": "GET", "path": "/products" },
+      "expect": {
+        "status": 200,
+        "exact": true,
+        "bodyMatches": {
+          "q": null,
+          "page": 1,
+          "page_size": 20,
+          "tags": null,
+          "in_stock": false
+        }
+      }
+    },
+    {
+      "level": "http",
+      "name": "Values are parsed into their annotated types",
+      "request": {
+        "method": "GET",
+        "path": "/products?q=ab&page=3&pageSize=50&tags=new&tags=sale&in_stock=yes"
+      },
+      "expect": {
+        "status": 200,
+        "bodyMatches": {
+          "q": "ab",
+          "page": 3,
+          "page_size": 50,
+          "tags": ["new", "sale"],
+          "in_stock": true
+        },
+        "bodyPredicate": "b => typeof b.page === 'number' && b.in_stock === true"
+      }
+    },
+    {
+      "level": "http",
+      "name": "page_size is exposed only under its alias, not its Python name",
+      "request": { "method": "GET", "path": "/products?page_size=50" },
+      "expect": {
+        "status": 200,
+        "bodyMatches": { "page_size": 20 }
+      }
+    },
+    {
+      "level": "http",
+      "name": "A one-character q is rejected by min_length",
+      "request": { "method": "GET", "path": "/products?q=a" },
+      "expect": {
+        "status": 422,
+        "bodyPredicate": "b => b.detail[0].loc.includes('query') && b.detail[0].loc.includes('q')"
+      }
+    },
+    {
+      "level": "http",
+      "name": "pageSize above the maximum is rejected",
+      "request": { "method": "GET", "path": "/products?pageSize=500" },
+      "expect": { "status": 422 }
+    },
+    {
+      "level": "http",
+      "name": "page below the minimum is rejected",
+      "request": { "method": "GET", "path": "/products?page=0" },
+      "expect": { "status": 422 }
+    },
+    {
+      "level": "openapi",
+      "name": "The alias reaches the schema as pageSize",
+      "pointer": "#/paths/~1m03~1l03~1products/get/parameters/2/name",
+      "expect": { "equals": "pageSize" }
+    },
+    {
+      "level": "openapi",
+      "name": "The upper bound on pageSize is documented",
+      "pointer": "#/paths/~1m03~1l03~1products/get/parameters/2/schema/maximum",
+      "expect": { "equals": 100 }
+    },
+    {
+      "level": "openapi",
+      "name": "tags is documented as an array of strings",
+      "pointer": "#/paths/~1m03~1l03~1products/get/parameters/3/schema/anyOf/0/items/type",
+      "expect": { "equals": "string" }
+    }
+  ]
+}
